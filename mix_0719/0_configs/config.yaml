@@ -1,0 +1,46 @@
+# 配置文件 for mix_0719 联合训练流水线
+
+# 1. 路径配置
+paths:
+  input_data: "mix_0719/1_inputs/graph_entities.json"
+  sbert_model_path: "mix_0719/5_models/all-MiniLM-L6-v2"
+  output_dir: "mix_0719/4_outputs"
+  log_file: "mix_0719/training.log"
+
+# 2. 数据处理配置
+data_processing:
+  train_ratio: 0.8
+  valid_ratio: 0.1
+  test_ratio: 0.1
+  # 定义如何将一个设备三元组转换为描述性文本的模板
+  entity_text_template: "type: {type}, vendor: {vendor}, model: {model}"
+  # 在联合模型中，我们可以先简化关系，专注于学习 Banner -> Triple 的直接映射
+  relation_name: "INDICATES_TRIPLE"
+  # (v2.4) 每个正样本最多生成的困难负样本数量
+  max_hard_negatives_per_positive: 3
+
+# 3. 联合模型 (Joint Model) 配置
+joint_model:
+  # SBERT 部分
+  sbert_embedding_dim: 384    # all-MiniLM-L6-v2 的维度，固定
+  finetune_sbert: true        # 核心开关：是否在训练中微调SBERT的参数
+
+  # 图谱嵌入部分 (类TransE)
+  entity_embedding_dim: 384   # 与SBERT维度保持一致，便于计算 h+r=t
+  
+  # TransE的Margin值
+  margin: 2.0
+
+# 4. 训练过程配置
+training:
+  device: "auto"              # 自动选择 'cuda' 或 'cpu'
+  epochs: 100                 # 训练轮次
+  batch_size: 32              # 批大小
+  patience: 20                # 用于早停 (Early Stopping)
+  
+  # 为模型的不同部分设置不同的学习率
+  sbert_lr: 1.0e-5
+  projection_lr: 2.0e-5       # 新增：为投影层设置学习率
+  graph_lr: 2.0e-5
+  
+  grad_clip: 1.0              # 梯度裁剪，防止梯度爆炸 
